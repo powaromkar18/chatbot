@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HealthChat Assistant</title>
+    <style>
+        /* Global Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f5f9fc;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        /* Floating Chat Bubble */
+        .chat-bubble {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #4CA1AF, #2C8EA6);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+        
+        .chat-bubble:hover {
+            transform: scale(1.1);
+        }
+        
+        .chat-bubble svg {
+            width: 30px;
+            height: 30px;
+            fill: white;
+        }
+        
+        /* Chat Container */
+        .chat-container {
+            position: fixed;
+            bottom: 100px;
+            right: 30px;
+            width: 350px;
+            height: 500px;
+            background-color: white;
+            border-radius: 15px;
+            box-shadow: 0 5px 30px rgba(0, 0, 0, 0.15);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transform: scale(0);
+            transform-origin: bottom right;
+            transition: transform 0.3s ease;
+            z-index: 999;
+        }
+        
+        .chat-container.active {
+            transform: scale(1);
+        }
+        
+        /* Chat Header */
+        .chat-header {
+            background: linear-gradient(135deg, #4CA1AF, #2C8EA6);
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .chat-header .logo {
+            width: 35px;
+            height: 35px;
+            background-color: white;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-right: 10px;
+        }
+        
+        .chat-header .logo svg {
+            width: 20px;
+            height: 20px;
+            fill: #2C8EA6;
+        }
+        
+        .chat-header h3 {
+            font-size: 18px;
+            margin-bottom: 3px;
+        }
+        
+        .chat-header p {
+            font-size: 12px;
+            opacity: 0.8;
+        }
+        
+        /* Chat Messages */
+        .chat-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background-color: #f9fafb;
+        }
+        
+        .message {
+            margin-bottom: 15px;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .user-message {
+            align-items: flex-end;
+        }
+        
+        .bot-message {
+            align-items: flex-start;
+        }
+        
+        .message-content {
+            padding: 12px 16px;
+            border-radius: 18px;
+            max-width: 80%;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+            position: relative;
+            animation: messageAppear 0.3s ease-out forwards;
+        }
+        
+        @keyframes messageAppear {
+            0% {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .user-message .message-content {
+            background: linear-gradient(135deg, #5eb77e, #3b9d62);
+            color: white;
+            border-bottom-right-radius: 5px;
+        }
+        
+        .bot-message .message-content {
+            background: white;
+            color: #333;
+            border-bottom-left-radius: 5px;
+            border-left: 3px solid #2C8EA6;
+        }
+        
+        .message-time {
+            font-size: 10px;
+            color: #999;
+            margin-top: 5px;
+        }
+        
+        .typing-indicator {
+            display: flex;
+            padding: 12px 16px;
+            background: white;
+            border-radius: 18px;
+            border-bottom-left-radius: 5px;
+            max-width: 80%;
+            margin-bottom: 15px;
+            border-left: 3px solid #2C8EA6;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+            animation: messageAppear 0.3s ease-out forwards;
+        }
+        
+        .typing-dot {
+            height: 8px;
+            width: 8px;
+            border-radius: 50%;
+            background-color: #2C8EA6;
+            margin: 0 2px;
+            display: inline-block;
+            animation: typingBounce 1.4s infinite ease-in-out;
+        }
+        
+        .typing-dot:nth-child(1) {
+            animation-delay: 0s;
+        }
+        
+        .typing-dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        
+        .typing-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+        
+        @keyframes typingBounce {
+            0%, 60%, 100% {
+                transform: translateY(0);
+            }
+            30% {
+                transform: translateY(-4px);
+            }
+        }
+        
+        /* Chat Input */
+        .chat-input {
+            padding: 15px;
+            border-top: 1px solid #eaeaea;
+            background-color: white;
+            display: flex;
+            align-items: center;
+        }
+        
+        .chat-input input {
+            flex: 1;
+            padding: 12px 15px;
+            border: none;
+            border-radius: 25px;
+            background-color: #f0f5f9;
+            font-size: 14px;
+            outline: none;
+        }
+        
+        .chat-input input:focus {
+            box-shadow: 0 0 0 2px rgba(76, 161, 175, 0.3);
+        }
+        
+        .chat-input button {
+            background: linear-gradient(135deg, #4CA1AF, #2C8EA6);
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-left: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .chat-input button:hover {
+            transform: scale(1.1);
+        }
+        
+        .chat-input button svg {
+            width: 20px;
+            height: 20px;
+            fill: white;
+        }
+        
+        /* Quick Responses */
+        .quick-responses {
+            padding: 10px 15px;
+            border-top: 1px solid #eaeaea;
+            display: flex;
+            overflow-x: auto;
+            white-space: nowrap;
+            background-color: #f9fafb;
+        }
+        
+        .quick-responses::-webkit-scrollbar {
+            height: 3px;
+        }
+        
+        .quick-responses::-webkit-scrollbar-thumb {
+            background-color: #c1c1c1;
+            border-radius: 10px;
+        }
+        
+        .quick-response-btn {
+            padding: 8px 15px;
+            margin-right: 8px;
+            background-color: white;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            font-size: 12px;
+            color: #555;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .quick-response-btn:hover {
+            background-color: #f0f5f9;
+            transform: translateY(-2px);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        
+        /* Responsive Design */
+        @media (max-width: 480px) {
+            .chat-container {
+                width: 90%;
+                height: 80vh;
+                bottom: 80px;
+                right: 5%;
+            }
+            
+            .chat-bubble {
+                bottom: 20px;
+                right: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Floating Chat Bubble -->
+    <div class="chat-bubble" id="chatBubble">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM9 11H7V9h2v2zm4 0h-2V9h2v2zm4 0h-2V9h2v2z"/>
+        </svg>
+    </div>
+    
+    <!-- Chat Container -->
+    <div class="chat-container" id="chatContainer">
+        <!-- Chat Header -->
+        <div class="chat-header">
+            <div class="logo">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                    <path d="M19 3H5c-1.1 0-1.99.9-1.99 2L3 19c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-1 11h-4v4h-4v-4H6v-4h4V6h4v4h4v4z"/>
+                </svg>
+            </div>
+            <div>
+                <h3>HealthChat</h3>
+                <p>Your 24/7 healthcare assistant</p>
+            </div>
+        </div>
+        
+        <!-- Chat Messages -->
+        <div class="chat-messages" id="chatMessages">
+            <!-- Messages will be added here dynamically -->
+        </div>
+        
+        <!-- Quick Response Buttons -->
+        <div class="quick-responses">
+            <button class="quick-response-btn" data-query="What should I do for a fever?">Fever help</button>
+            <button class="quick-response-btn" data-query="I have a headache">Headache</button>
+            <button class="quick-response-btn" data-query="Healthy diet tips">Diet tips</button>
+            <button class="quick-response-btn" data-query="Exercise recommendations">Exercise</button>
+            <button class="quick-response-btn" data-query="Sleep problems">Sleep issues</button>
+        </div>
+        
+        <!-- Chat Input -->
+        <div class="chat-input">
+            <input type="text" id="messageInput" placeholder="Type your health question here...">
+            <button id="sendMessageBtn">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                    <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // DOM elements
+            const chatBubble = document.getElementById('chatBubble');
+            const chatContainer = document.getElementById('chatContainer');
+            const chatMessages = document.getElementById('chatMessages');
+            const messageInput = document.getElementById('messageInput');
+            const sendMessageBtn = document.getElementById('sendMessageBtn');
+            const quickResponseBtns = document.querySelectorAll('.quick-response-btn');
+            
+            // Health-related responses
+            const healthResponses = {
+                greeting: [
+                    "Hello! I'm HealthChat, your healthcare assistant. How can I help you today?",
+                    "Welcome to HealthChat! How may I assist with your health questions?"
+                ],
+                fever: [
+                    "For a fever, it's recommended to rest, stay hydrated, and take acetaminophen or ibuprofen if needed. If your temperature exceeds 103°F (39.4°C) or lasts more than three days, please consult a healthcare provider.",
+                    "When dealing with a fever, make sure to drink plenty of fluids to prevent dehydration. Rest as much as possible and consider over-the-counter medications like acetaminophen to reduce the fever. If symptoms worsen or persist, please seek medical attention."
+                ],
+                headache: [
+                    "For headaches, try resting in a quiet, dark room, applying a cold compress to your forehead, staying hydrated, and taking over-the-counter pain relievers if appropriate. If headaches are severe or recurring frequently, please consult a healthcare provider.",
+                    "Headaches can often be relieved by simple remedies like drinking water, taking a break from screens, gentle massage of your temples, and over-the-counter medications. For persistent or severe headaches, professional medical advice is recommended."
+                ],
+                diet: [
+                    "For a healthy diet, focus on a variety of fruits and vegetables, whole grains, lean proteins, and healthy fats. Limit processed foods, added sugars, and excessive salt. Remember to stay hydrated by drinking plenty of water throughout the day.",
+                    "A balanced diet includes colorful fruits and vegetables, whole grains like brown rice and quinoa, lean proteins such as fish and beans, and healthy fats found in avocados and nuts. Try to meal plan and cook at home more often to control ingredients and portion sizes."
+                ],
+                exercise: [
+                    "Regular exercise is important for overall health. Aim for at least 150 minutes of moderate activity per week, such as brisk walking, swimming, or cycling. Include strength training exercises at least twice a week. Always start gradually and consult a healthcare provider before beginning a new exercise program.",
+                    "For optimal health benefits, combine cardio activities like walking or swimming with strength training and flexibility exercises. Even short 10-minute sessions throughout the day can be beneficial. Listen to your body and adjust intensity based on your fitness level."
+                ],
+                sleep: [
+                    "Good sleep habits include maintaining a consistent sleep schedule, creating a relaxing bedtime routine, keeping your bedroom cool and dark, avoiding screens before bed, and limiting caffeine and alcohol. Adults typically need 7-9 hours of sleep per night.",
+                    "To improve sleep quality, try to go to bed and wake up at the same time daily, avoid large meals before bedtime, exercise regularly (but not too close to bedtime), and create a comfortable sleep environment. If you have persistent sleep problems, consider talking to a healthcare provider."
+                ],
+                default: [
+                    "I understand you have a health concern. While I can provide general information, it's always best to consult with a healthcare provider for personalized advice. Is there something specific you'd like to know more about?",
+                    "Thank you for sharing your health concern. I can offer general guidance, but remember that this doesn't replace professional medical advice. Would you like to know more about prevention, symptoms, or general management?"
+                ]
+            };
+            
+            // Toggle chat window
+            chatBubble.addEventListener('click', function() {
+                chatContainer.classList.toggle('active');
+                if (chatContainer.classList.contains('active') && chatMessages.childElementCount === 0) {
+                    // Show welcome message when first opened
+                    setTimeout(() => {
+                        addBotMessage(getRandomResponse('greeting'));
+                    }, 500);
+                }
+            });
+            
+            // Send message on button click
+            sendMessageBtn.addEventListener('click', function() {
+                sendMessage();
+            });
+            
+            // Send message on Enter key
+            messageInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    sendMessage();
+                }
+            });
+            
+            // Quick response buttons
+            quickResponseBtns.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const query = this.getAttribute('data-query');
+                    messageInput.value = query;
+                    sendMessage();
+                });
+            });
+            
+            // Function to send message
+            function sendMessage() {
+                const message = messageInput.value.trim();
+                if (message) {
+                    // Add user message
+                    addUserMessage(message);
+                    messageInput.value = '';
+                    
+                    // Show typing indicator
+                    showTypingIndicator();
+                    
+                    // Process the message and respond after a delay
+                    setTimeout(() => {
+                        removeTypingIndicator();
+                        processMessage(message);
+                    }, 1500); // Simulated typing time
+                }
+            }
+            
+            // Function to add user message
+            function addUserMessage(message) {
+                const time = getCurrentTime();
+                
+                const messageElement = document.createElement('div');
+                messageElement.className = 'message user-message';
+                messageElement.innerHTML = `
+                    <div class="message-content">${message}</div>
+                    <div class="message-time">${time}</div>
+                `;
+                
+                chatMessages.appendChild(messageElement);
+                scrollToBottom();
+            }
+            
+            // Function to add bot message
+            function addBotMessage(message) {
+                const time = getCurrentTime();
+                
+                const messageElement = document.createElement('div');
+                messageElement.className = 'message bot-message';
+                messageElement.innerHTML = `
+                    <div class="message-content">${message}</div>
+                    <div class="message-time">${time}</div>
+                `;
+                
+                chatMessages.appendChild(messageElement);
+                scrollToBottom();
+            }
+            
+            // Function to show typing indicator
+            function showTypingIndicator() {
+                const typingElement = document.createElement('div');
+                typingElement.className = 'typing-indicator';
+                typingElement.id = 'typingIndicator';
+                typingElement.innerHTML = `
+                    <span class="typing-dot"></span>
+                    <span class="typing-dot"></span>
+                    <span class="typing-dot"></span>
+                `;
+                
+                chatMessages.appendChild(typingElement);
+                scrollToBottom();
+            }
+            
+            // Function to remove typing indicator
+            function removeTypingIndicator() {
+                const typingIndicator = document.getElementById('typingIndicator');
+                if (typingIndicator) {
+                    typingIndicator.remove();
+                }
+            }
+            
+            // Function to process message and determine response
+            function processMessage(message) {
+                const lowerMessage = message.toLowerCase();
+                
+                if (lowerMessage.includes('fever') || lowerMessage.includes('temperature') || lowerMessage.includes('hot')) {
+                    addBotMessage(getRandomResponse('fever'));
+                } else if (lowerMessage.includes('headache') || lowerMessage.includes('head pain') || lowerMessage.includes('migraine')) {
+                    addBotMessage(getRandomResponse('headache'));
+                } else if (lowerMessage.includes('diet') || lowerMessage.includes('nutrition') || lowerMessage.includes('food') || lowerMessage.includes('eat')) {
+                    addBotMessage(getRandomResponse('diet'));
+                } else if (lowerMessage.includes('exercise') || lowerMessage.includes('workout') || lowerMessage.includes('fitness') || lowerMessage.includes('active')) {
+                    addBotMessage(getRandomResponse('exercise'));
+                } else if (lowerMessage.includes('sleep') || lowerMessage.includes('insomnia') || lowerMessage.includes('tired') || lowerMessage.includes('rest')) {
+                    addBotMessage(getRandomResponse('sleep'));
+                } else if (lowerMessage.includes('hello') || lowerMessage.includes('hi') || lowerMessage.includes('hey')) {
+                    addBotMessage(getRandomResponse('greeting'));
+                } else {
+                    addBotMessage(getRandomResponse('default'));
+                }
+            }
+            
+            // Get random response from category
+            function getRandomResponse(category) {
+                const responses = healthResponses[category] || healthResponses.default;
+                return responses[Math.floor(Math.random() * responses.length)];
+            }
+            
+            // Get current time in HH:MM format
+            function getCurrentTime() {
+                const now = new Date();
+                let hours = now.getHours();
+                let minutes = now.getMinutes();
+                const ampm = hours >= 12 ? 'PM' : 'AM';
+                
+                hours = hours % 12;
+                hours = hours ? hours : 12;
+                minutes = minutes < 10 ? '0' + minutes : minutes;
+                
+                return `${hours}:${minutes} ${ampm}`;
+            }
+            
+            // Scroll to bottom of chat
+            function scrollToBottom() {
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+        });
+    </script>
+</body>
+</html>
